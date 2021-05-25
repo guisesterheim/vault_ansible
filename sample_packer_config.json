@@ -1,0 +1,73 @@
+
+{
+    "__comments__": "under inline, we download dependencies, Ansible and run it from the machine. Access key and secret key must be passed as parameters on the run command like the example: 'packer build -var 'client_id=client_id' packer_config.json'",
+    "variables": {
+        "client_id": "",
+        "client_secret": "",
+        "tenant_id": "",
+        "subscription_id": ""
+    },
+    "builders": [{
+        "type": "azure-arm",
+
+        "client_id": "{{user `client_id`}}",
+        "client_secret": "{{user `client_secret`}}",
+        "tenant_id": "{{user `tenant_id`}}",
+        "subscription_id": "{{user `subscription_id`}}",
+
+        "managed_image_resource_group_name": "MyResourceGroup",
+        "managed_image_name": "packer-vault-{{user `environment`}}-{{timestamp}}",
+        "build_resource_group_name": "TempResourceGroupToCreateImage",
+
+        "os_type": "Linux",
+        "image_publisher": "Canonical",
+        "image_offer": "UbuntuServer",
+        "image_sku": "18.04-LTS",
+
+        "azure_tags": {
+            "Name": "Vault-Packer-Image",
+            "Application": "Vault",
+            "Environment": "{{user `environment`}}"
+        },
+        "vm_size": "Standard_D2_v2"
+    }],
+    "provisioners": [{
+        "type": "shell",
+        "inline": [
+            "sudo apt-get update -y",
+            "sudo apt-get install -y wget curl vim git unzip",
+
+            "sudo apt-get install -y python3",
+            "sudo apt-get install -y python3-pip",
+            "sudo pip3 install --upgrade pip",
+            "sudo pip3 install packaging",
+        
+            "sudo apt-get -y install python-jinja2 python-paramiko",
+            "sudo pip3 install ansible",
+
+            "sudo git clone https://github.com/guisesterheim/vault_ansible.git /home/ubuntu/vault"
+        ]
+    },{
+        "type": "file",
+        "source": "CERTIFICATES_PATH/fullchain1.pem",
+        "destination": "/tmp/fullchain.crt"
+    },{
+        "type": "file",
+        "source": "CERTIFICATES_PATH/privkey1.pem", 
+        "destination": "/tmp/privkey.key"
+    },{
+        "type": "file",
+        "source": "CERTIFICATES_PATH/chain1.pem", 
+        "destination": "/tmp/chain.crt"
+    },{
+        "type": "shell",
+        "inline": [
+            "sudo mv /tmp/fullchain.crt /home/ubuntu/vault/ansible-config/roles/ansible-role-vault/files/server.crt",
+            "sudo mv /tmp/privkey.key /home/ubuntu/vault/ansible-config/roles/ansible-role-vault/files/server.key",
+            "sudo mv /tmp/chain.crt /home/ubuntu/vault/ansible-config/roles/ansible-role-vault/files/ca.crt",
+            "sudo echo export VAULT_ADDR=https://MY_APP_URL:8200 >> ~/.bashrc",
+    
+            "sudo ansible-playbook /home/ubuntu/vault/ansible-config/site.yml --extra-vars '{\"POSTGRESQL_CONNECTION_URL\":\"postgresql://vault-db-ENVIRONMENT_REPLACE.postgres.database.azure.com:5432/vault?user=VAULT_DATABASE_USER@vault-db-ENVIRONMENT_REPLACE&password=VAULT_DATABASE_PASS&sslmode=require\", \"ENVIRONMENT\":\"ENVIRONMENT_REPLACE\"}'"
+        ]
+    }]
+}

@@ -1,0 +1,9 @@
+---
+# File: tasks/asserts.yml - Asserts for this role
+
+- name: Fail if PostgreSQL Connection URL was not informed for PostgreSQL Backend
+  fail:
+    msg: "POSTGRESQL_CONNECTION_URL must be informed for PostgreSQL backend"
+  when:
+    - vault_backend == "postgresql"
+    - POSTGRESQL_CONNECTION_URL is not defined

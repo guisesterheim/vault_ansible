@@ -1,0 +1,53 @@
+# -*- mode: ruby -*-
+# vi set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+    config.vm.provider "virtualbox"
+    config.vm.provider "virtualbox" do |v|
+        v.memory = 4096
+        v.cpus = 4
+    end
+
+    config.vm.box = "ubuntu/xenial64"
+    config.vm.network "forwarded_port", guest: 8080, host: 5555
+    config.vm.network "forwarded_port", guest: 80, host: 6666 
+    config.vm.synced_folder ".", "/home/vagrant/shared"
+    config.vm.provision "shell", inline: <<-SHELL
+
+        sudo apt-get update -y
+        sudo apt-get install -y wget curl vim git unzip
+
+        # Ansible from its own PPA (no pip solution)
+        sudo apt install software-properties-common
+        sudo apt-add-repository --yes --update ppa:ansible/ansible
+        sudo apt install -y ansible
+
+        # Clone repo and start the app
+        sudo git clone https://github.com/guisesterheim/vault_ansible.git /home/ubuntu/vault
+    SHELL
+
+    config.vm.provision "file", 
+        source: "/my_ca_files/path/fullchain1.pem", 
+        destination: "/tmp/fullchain.crt"
+    config.vm.provision "file",
+        source: "/my_ca_files/path/privkey1.pem", 
+        destination: "/tmp/privkey.key"
+    config.vm.provision "file", 
+        source: "/my_ca_files/path/chain1.pem", 
+        destination: "/tmp/chain.crt"
+
+    config.vm.provision "shell", inline: <<-SHELL        
+
+        export ENVIRONMENT=qa
+
+        mv /tmp/fullchain.crt /home/ubuntu/vault/ansible-config/roles/ansible-role-vault/files/server.crt
+        mv /tmp/privkey.key /home/ubuntu/vault/ansible-config/roles/ansible-role-vault/files/server.key
+        mv /tmp/chain.crt /home/ubuntu/vault/ansible-config/roles/ansible-role-vault/files/ca.crt
+        sudo echo export VAULT_ADDR=https://MY_APP_URL:8200 >> ~/.bashrc
+
+        # Run playbook
+        sudo ansible-playbook /home/ubuntu/vault/ansible-config/site.yml --extra-vars '{"POSTGRESQL_CONNECTION_URL":"postgresql://vault-db-dev.postgres.database.azure.com:5432/vault?user=USERNAME@vault-db-dev&password=PASS-HERE&sslmode=require" \
+                                                                                        "ENVIRONMENT":"$ENVIRONMENT"}'
+    SHELL
+end

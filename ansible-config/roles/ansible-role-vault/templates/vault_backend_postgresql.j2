@@ -1,0 +1,24 @@
+storage "postgresql" {
+
+  connection_url = "{{ vault_posgresql_connection_url }}"
+  
+  {% if vault_posgresql_table is defined and vault_posgresql_table|length -%}
+  table = "{{ vault_posgresql_table }}"
+  {% endif -%}
+
+  {% if vault_posgresql_max_idle_connections is defined and vault_posgresql_max_idle_connections|length -%}
+  max_idle_connections = "{{ vault_posgresql_max_idle_connections }}"
+  {% endif -%}
+  
+  {% if vault_posgresql_max_parallel is defined and vault_posgresql_max_parallel|length -%}
+  max_parallel = "{{ vault_posgresql_max_parallel }}"
+  {% endif -%}
+  
+  {% if vault_posgresql_ha_enabled is defined and vault_posgresql_ha_enabled|length -%}
+  ha_enabled = "{{ vault_posgresql_ha_enabled }}"
+  {% endif -%}
+
+  {% if vault_posgresql_ha_table is defined and vault_posgresql_ha_table|length -%}
+  ha_table = "{{ vault_posgresql_ha_table }}"
+  {% endif -%}
+}

@@ -1,0 +1,13 @@
+---
+# This playbook deploys the whole application stack for a vault.
+
+- name: Install Vault
+  hosts: localhost
+  become: true
+  become_user: root
+  any_errors_fatal: true
+  vars:
+    - vault_backend: "postgresql"
+    - vault_api_address: "MY_VAULT_URL_HERE"
+  roles:
+    - role: ansible-role-vault
